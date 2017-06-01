@@ -9,8 +9,8 @@ int main(int argc, char *argv[])
     QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
 
     QApplication a(argc, argv);    
-    StrGenerator w;
-    w.show();
+    StrGenerator generator;
+    generator.show();
 
     return a.exec();
 }

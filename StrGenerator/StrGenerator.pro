@@ -13,6 +13,8 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        strgenerator.cpp
+        strgenerator.cpp \
+    recordstructure.cpp
 
-HEADERS  += strgenerator.h
+HEADERS  += strgenerator.h \
+    recordstructure.h

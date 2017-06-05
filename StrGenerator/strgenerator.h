@@ -30,6 +30,9 @@ public:
     StrGenerator(QWidget *parent = 0);
     void createForm();
     ~StrGenerator();
+
+public slots:
+    void slotGenerateButtonClick();
 };
 
 #endif // STRGENERATOR_H

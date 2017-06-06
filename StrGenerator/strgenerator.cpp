@@ -4,6 +4,11 @@
 #include <QGroupBox>
 #include <QMessageBox>
 #include <QHeaderView>
+#include <cmath>
+#include <QtXml>
+#include <QFile>
+#include <QFileDialog>
+#include <QDir>
 
 /**
  * @brief Глобальная переменная countRecordsToGenerate предназначена для хранения числа записей при нажатии кнопки генерации
@@ -53,7 +58,9 @@ int randInt(int min, int max)
  */
 double randDouble(double min, double max)
 {
-    return ((double)qrand()*(max - min))/(double)RAND_MAX + min;
+    //с округлением до 3 знака после запятой
+    return round((((double)qrand()*(max - min))/(double)RAND_MAX + min)*1000)/1000.;
+    //return (((double)qrand()*(max - min))/(double)RAND_MAX + min);
 }
 
 StrGenerator::StrGenerator(QWidget *parent)
@@ -220,6 +227,7 @@ void StrGenerator::slotGenerateButtonClick()
         pModel->setItem(i,2, new QStandardItem(QString::number(rs.rndDouble)));
         pModel->setItem(i,3, new QStandardItem(QVariant(rs.rndBool).toString()));
     }
+    qDebug() << "Generate ended";
     qDebug() << "records.size(): " << records.size();
     pCountRecordsFromTable->setText(QString::number(records.size()));
 }
@@ -233,12 +241,56 @@ void StrGenerator::slotOnTableClick(const QModelIndex &index)
         pCol2ValueFromTable->setText(index.sibling(row, 1).data().toString());
         pCol3ValueFromTable->setText(index.sibling(row, 2).data().toString());
         pCol4ValueFromTable->setText(index.sibling(row, 3).data().toString());
+        qDebug() << "Current row clicked: " << index.row()+1;
     }
 }
 
 void StrGenerator::slotSaveButtonClick()
 {
     qDebug() << "slotSaveButtonClick started";
+    qDebug() << "Records to save: " << records.size();
+    if (records.size() <=0)
+    {
+        QMessageBox::information(0, tr("Информация"), tr("Нет записей для сохранения в файл"), QMessageBox::Ok);
+        return;
+    }
+
+    QDomDocument doc;
+    QDomProcessingInstruction xmlHeaderPI = doc.createProcessingInstruction("xml", "version=\"1.0\" encoding=\"utf-8\"?");
+    doc.appendChild(xmlHeaderPI);
+    QDomElement domElement = doc.createElement("data");
+    doc.appendChild(domElement);
+    for (int i=0; i<records.size(); i++)
+    {
+        RecordStructure rs = records[i];
+        QDomElement domItem = doc.createElement("item");
+        QDomAttr domAttrCol1 = doc.createAttribute("col1");
+        domAttrCol1.setValue(rs.rndStr);
+        domItem.setAttributeNode(domAttrCol1);
+        QDomAttr domAttrCol2 = doc.createAttribute("col2");
+        domAttrCol2.setValue(QString::number(rs.rndInt));
+        domItem.setAttributeNode(domAttrCol2);
+        QDomAttr domAttrCol3 = doc.createAttribute("col3");
+        domAttrCol3.setValue(QString::number(rs.rndDouble));
+        domItem.setAttributeNode(domAttrCol3);
+        QDomAttr domAttrCol4 = doc.createAttribute("col4");
+        domAttrCol4.setValue(QVariant(rs.rndBool).toString());
+        domItem.setAttributeNode(domAttrCol4);
+
+        domElement.appendChild(domItem);
+    }
+
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Сохранение"),
+                               "./data.xml",
+                                tr("XML documents (*.xml)"));
+    QFile file(fileName);
+    if (file.open(QIODevice::WriteOnly))
+    {
+        QTextStream(&file) << doc.toString();
+        file.close();
+        QMessageBox::information(0, tr("Сообщение"), tr("Данные успешно сохранены в файл"), QMessageBox::Ok);
+        return;
+    }
 }
 
 void StrGenerator::slotLoadButtonClick()

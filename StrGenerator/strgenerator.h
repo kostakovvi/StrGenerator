@@ -6,6 +6,9 @@
 #include <recordstructure.h>
 #include <QLabel>
 #include <QLineEdit>
+#include <QTableView>
+#include <QStandardItemModel>
+#include <QModelIndex>
 
 class StrGenerator : public QWidget
 {
@@ -26,6 +29,9 @@ private:
     QLabel* pCol3ValueFromTable;
     QLabel* pCol4ValueFromTable;
 
+    QTableView* pRecordsTableView;
+    QStandardItemModel* pModel;
+
 public:
     StrGenerator(QWidget *parent = 0);
     void createForm();
@@ -33,6 +39,9 @@ public:
 
 public slots:
     void slotGenerateButtonClick();
+    void slotOnTableClick(const QModelIndex& );
+    void slotSaveButtonClick();
+    void slotLoadButtonClick();
 };
 
 #endif // STRGENERATOR_H

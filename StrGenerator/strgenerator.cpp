@@ -2,13 +2,13 @@
 #include <QDebug>
 #include <QBoxLayout>
 #include <QGroupBox>
-#include <QTableView>
 #include <QMessageBox>
+#include <QHeaderView>
 
 /**
  * @brief Глобальная переменная countRecordsToGenerate предназначена для хранения числа записей при нажатии кнопки генерации
  */
-int countRecordsToGenerate;
+int countRecordsToGenerate=0;
 
 /**
  * @brief Функция randString генерирует случайную строку
@@ -60,9 +60,12 @@ StrGenerator::StrGenerator(QWidget *parent)
     : QWidget(parent)
 {
     qDebug() << "StrGenerator constructor started";
-    createForm();
+    createForm();   
 
     connect(pGenerateButton, SIGNAL(clicked()), SLOT(slotGenerateButtonClick()));
+    connect(pRecordsTableView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(slotOnTableClick(const QModelIndex&)));
+    connect(pSaveButton, SIGNAL(clicked()), SLOT(slotSaveButtonClick()));
+    connect(pLoadButton, SIGNAL(clicked()), SLOT(slotLoadButtonClick()));
 }
 
 void StrGenerator::createForm()
@@ -79,7 +82,32 @@ void StrGenerator::createForm()
      setAutoFillBackground(true);
      setPalette(Pal);
 
-     QTableView* recordsTableView = new QTableView;
+     pRecordsTableView = new QTableView;
+     pRecordsTableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+     pRecordsTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+     pRecordsTableView->verticalHeader()->hide();
+     pRecordsTableView->horizontalHeader()->setHighlightSections(false);
+
+     /**
+      * @brief Переменная countCol задает количество колонок
+      */
+     int countCol = 4;
+
+     pModel = new QStandardItemModel(countRecordsToGenerate,countCol,this);
+     pModel->setHorizontalHeaderItem(0, new QStandardItem(QString(tr("Колонка1"))));
+     pModel->setHorizontalHeaderItem(1, new QStandardItem(QString(tr("Колонка2"))));
+     pModel->setHorizontalHeaderItem(2, new QStandardItem(QString(tr("Колонка3"))));
+     pModel->setHorizontalHeaderItem(3, new QStandardItem(QString(tr("Колонка4"))));
+
+     //QStandardItem *firstRow = new QStandardItem(QString("ColumnValue"));
+     //model->setItem(0,0,firstRow);
+
+     pRecordsTableView->setModel(pModel);
+
+     for (int col=0; col<countCol; col++)
+     {
+        pRecordsTableView->setColumnWidth(col,70);
+     }
 
      QGroupBox* gbxRecords = new QGroupBox(tr("&Записи"));
      gbxRecords->setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
@@ -148,7 +176,7 @@ void StrGenerator::createForm()
      vbxLayout->addLayout(gridStatLayout);
      vbxLayout->setAlignment(Qt::AlignTop);
 
-     hbxLayout->addWidget(recordsTableView);
+     hbxLayout->addWidget(pRecordsTableView);
      hbxLayout->addLayout(vbxLayout);
 
      setLayout(hbxLayout);
@@ -170,7 +198,8 @@ void StrGenerator::slotGenerateButtonClick()
         return;
     }
 
-    records.clear();
+    pModel->removeRows(0, records.size());
+    records.clear();    
 
     for (int i=0; i < countRecordsToGenerate; i++)
     {
@@ -185,8 +214,34 @@ void StrGenerator::slotGenerateButtonClick()
         rs.rndBool = randBool();
         //qDebug() << rs.rndBool;
         records.append(rs);
+        //QStandardItem* item =  new QStandardItem(rs.rndStr);
+        pModel->setItem(i,0, new QStandardItem(rs.rndStr));
+        pModel->setItem(i,1, new QStandardItem(QString::number(rs.rndInt)));
+        pModel->setItem(i,2, new QStandardItem(QString::number(rs.rndDouble)));
+        pModel->setItem(i,3, new QStandardItem(QVariant(rs.rndBool).toString()));
     }
     qDebug() << "records.size(): " << records.size();
     pCountRecordsFromTable->setText(QString::number(records.size()));
+}
 
+void StrGenerator::slotOnTableClick(const QModelIndex &index)
+{
+    if (index.isValid())
+    {
+        int row = index.row();
+        pCol1ValueFromTable->setText(index.sibling(row, 0).data().toString());
+        pCol2ValueFromTable->setText(index.sibling(row, 1).data().toString());
+        pCol3ValueFromTable->setText(index.sibling(row, 2).data().toString());
+        pCol4ValueFromTable->setText(index.sibling(row, 3).data().toString());
+    }
+}
+
+void StrGenerator::slotSaveButtonClick()
+{
+    qDebug() << "slotSaveButtonClick started";
+}
+
+void StrGenerator::slotLoadButtonClick()
+{
+    qDebug() << "slotLoadButtonClick started";
 }

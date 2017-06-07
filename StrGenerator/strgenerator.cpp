@@ -69,6 +69,10 @@ StrGenerator::StrGenerator(QWidget *parent)
     qDebug() << "StrGenerator constructor started";
     createForm();   
 
+    // Необходимо для корректного срабатывания рандома
+    QTime time = QTime::currentTime();
+    qsrand((uint)time.msec());
+
     connect(pGenerateButton, SIGNAL(clicked()), SLOT(slotGenerateButtonClick()));
     connect(pRecordsTableView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(slotOnTableClick(const QModelIndex&)));
     connect(pSaveButton, SIGNAL(clicked()), SLOT(slotSaveButtonClick()));
@@ -222,6 +226,7 @@ void StrGenerator::slotGenerateButtonClick()
         //qDebug() << rs.rndBool;
         records.append(rs);
         //QStandardItem* item =  new QStandardItem(rs.rndStr);
+
         pModel->setItem(i,0, new QStandardItem(rs.rndStr));
         pModel->setItem(i,1, new QStandardItem(QString::number(rs.rndInt)));
         pModel->setItem(i,2, new QStandardItem(QString::number(rs.rndDouble)));
@@ -253,32 +258,7 @@ void StrGenerator::slotSaveButtonClick()
     {
         QMessageBox::information(0, tr("Информация"), tr("Нет записей для сохранения в файл"), QMessageBox::Ok);
         return;
-    }
-
-    QDomDocument doc;
-    QDomProcessingInstruction xmlHeaderPI = doc.createProcessingInstruction("xml", "version=\"1.0\" encoding=\"utf-8\"?");
-    doc.appendChild(xmlHeaderPI);
-    QDomElement domElement = doc.createElement("data");
-    doc.appendChild(domElement);
-    for (int i=0; i<records.size(); i++)
-    {
-        RecordStructure rs = records[i];
-        QDomElement domItem = doc.createElement("item");
-        QDomAttr domAttrCol1 = doc.createAttribute("col1");
-        domAttrCol1.setValue(rs.rndStr);
-        domItem.setAttributeNode(domAttrCol1);
-        QDomAttr domAttrCol2 = doc.createAttribute("col2");
-        domAttrCol2.setValue(QString::number(rs.rndInt));
-        domItem.setAttributeNode(domAttrCol2);
-        QDomAttr domAttrCol3 = doc.createAttribute("col3");
-        domAttrCol3.setValue(QString::number(rs.rndDouble));
-        domItem.setAttributeNode(domAttrCol3);
-        QDomAttr domAttrCol4 = doc.createAttribute("col4");
-        domAttrCol4.setValue(QVariant(rs.rndBool).toString());
-        domItem.setAttributeNode(domAttrCol4);
-
-        domElement.appendChild(domItem);
-    }
+    }   
 
     QString fileName = QFileDialog::getSaveFileName(this, tr("Сохранение"),
                                "./data.xml",
@@ -286,7 +266,23 @@ void StrGenerator::slotSaveButtonClick()
     QFile file(fileName);
     if (file.open(QIODevice::WriteOnly))
     {
-        QTextStream(&file) << doc.toString();
+        QXmlStreamWriter xmlWriter(&file);
+        xmlWriter.setAutoFormatting(true);
+        xmlWriter.writeStartDocument();
+        xmlWriter.writeStartElement("data");
+        for (int i=0; i<records.size(); i++)
+        {
+            RecordStructure rs = records[i];
+            xmlWriter.writeStartElement("item");
+            xmlWriter.writeAttribute("col1", rs.rndStr);
+            xmlWriter.writeAttribute("col2", QString::number(rs.rndInt));
+            xmlWriter.writeAttribute("col3", QString::number(rs.rndDouble));
+            xmlWriter.writeAttribute("col4", QVariant(rs.rndBool).toString());
+            xmlWriter.writeEndElement();
+        }
+        xmlWriter.writeEndElement();
+
+        //QTextStream(&file) << doc.toString();
         file.close();
         QMessageBox::information(0, tr("Сообщение"), tr("Данные успешно сохранены в файл"), QMessageBox::Ok);
         return;

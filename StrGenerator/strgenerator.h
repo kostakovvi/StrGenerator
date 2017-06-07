@@ -32,6 +32,10 @@ private:
     QTableView* pRecordsTableView;
     QStandardItemModel* pModel;
 
+    /**
+     * @brief Функция putStructureToModel осуществляет размещение элементов структуры в модель
+     * для отображения в QTableView
+     */
     void putStructureToModel(QStandardItemModel&, RecordStructure&, int);
 
 public:

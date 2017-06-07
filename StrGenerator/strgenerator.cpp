@@ -8,6 +8,7 @@
 #include <QtXml>
 #include <QFile>
 #include <QFileDialog>
+#include <QProgressDialog>
 
 /**
  * @brief Глобальная переменная countRecordsToGenerate предназначена для хранения числа записей при нажатии кнопки генерации
@@ -211,6 +212,15 @@ void StrGenerator::slotGenerateButtonClick()
     pModel->removeRows(0, records.size());
     records.clear();    
 
+    QProgressDialog *progress = new QProgressDialog("", tr("Отмена"), 0, countRecordsToGenerate-1);
+    progress->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+    progress->setWindowModality(Qt::WindowModal); //не работает так, как ожидалось
+    progress->setWindowTitle(tr("Генерация данных"));
+    //progress->setMinimumDuration(8000);
+    progress->setMinimumWidth(250);    
+    //progress->setRange(0,countRecordsToGenerate); //0
+    progress->setValue(0);
+    //progress->show();
     for (int i=0; i < countRecordsToGenerate; i++)
     {
         //qDebug() << "Generate the structure element " << i+1;
@@ -223,15 +233,21 @@ void StrGenerator::slotGenerateButtonClick()
         //qDebug() << rs.rndDouble;
         rs.rndBool = randBool();
         //qDebug() << rs.rndBool;
-        records.append(rs);
-        //QStandardItem* item =  new QStandardItem(rs.rndStr);
+        records.append(rs);        
 
-       /* pModel->setItem(i,0, new QStandardItem(rs.rndStr));
-        pModel->setItem(i,1, new QStandardItem(QString::number(rs.rndInt)));
-        pModel->setItem(i,2, new QStandardItem(QString::number(rs.rndDouble)));
-        pModel->setItem(i,3, new QStandardItem(QVariant(rs.rndBool).toString()));*/
         putStructureToModel(*pModel, rs, i);
+
+        progress->setValue(i);
+        //Позволяет разблокировать графический интерфейс программы в момент проведения интенсивных операций. Работает медленнее.
+        qApp->processEvents();
+        if(progress->wasCanceled())
+        {
+            qDebug() << "Progress cancelled";
+            break;
+        }
     }
+    progress->close();
+    delete progress;
     qDebug() << "Generate ended";
     qDebug() << "records.size(): " << records.size();
     pCountRecordsFromTable->setText(QString::number(records.size()));
@@ -270,6 +286,15 @@ void StrGenerator::slotSaveButtonClick()
         xmlWriter.setAutoFormatting(true);
         xmlWriter.writeStartDocument();
         xmlWriter.writeStartElement("data");
+
+        QProgressDialog *progress = new QProgressDialog("", tr("Отмена"), 0, records.size()-1);
+        progress->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+        progress->setWindowModality(Qt::WindowModal); //не работает так, как ожидалось
+        progress->setWindowTitle(tr("Сохранение данных в файл"));
+        //progress->setMinimumDuration(8000);
+        progress->setMinimumWidth(250);
+        progress->setValue(0);
+        progress->show();
         for (int i=0; i<records.size(); i++)
         {
             RecordStructure rs = records[i];
@@ -279,10 +304,18 @@ void StrGenerator::slotSaveButtonClick()
             xmlWriter.writeAttribute("col3", QString::number(rs.rndDouble));
             xmlWriter.writeAttribute("col4", QVariant(rs.rndBool).toString());
             xmlWriter.writeEndElement();
+            progress->setValue(i);
+            if(progress->wasCanceled())
+            {
+                qDebug() << "Progress cancelled";
+                break;
+            }
         }
         xmlWriter.writeEndElement();
 
         file.close();
+        progress->close();
+        delete progress;
         QMessageBox::information(0, tr("Сообщение"), tr("Данные успешно сохранены в файл"), QMessageBox::Ok);
         return;
     }
@@ -304,8 +337,19 @@ void StrGenerator::slotLoadButtonClick()
         return;
     }
 
+    pModel->removeRows(0, records.size());
     records.clear();
     qDebug() << "records.size(): " << records.size();
+
+    QProgressDialog *progress = new QProgressDialog("", tr("Отмена"), 0, 100);
+    progress->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+    progress->setWindowModality(Qt::WindowModal); //не работает так, как ожидалось
+    progress->setWindowTitle(tr("Загрузка данных из файла"));
+    //progress->setMinimumDuration(8000);
+    progress->setMinimumWidth(250);
+    progress->setRange(0,0); //0
+    progress->setValue(0);
+    progress->show();
     xmlReader.setDevice(&file);
     xmlReader.readNext();  // Переходит к первому элементу в файле
 
@@ -338,22 +382,28 @@ void StrGenerator::slotLoadButtonClick()
                }
                records.append(rs);
                putStructureToModel(*pModel, rs, records.size()-1);
+               progress->setValue(records.size()-1);
+
+               qApp->processEvents();
+               if(progress->wasCanceled())
+               {
+                   qDebug() << "Progress cancelled";
+                   break;
+               }
            }
         }
         xmlReader.readNext();
     }
-    file.close();
-    qDebug() << "Records loaded: " << records.size();
+    file.close();    
     if (xmlReader.hasError())
     {
         QMessageBox::critical(0, tr("Ошибка"), tr("Не удалось распарсить содержимое файла"), QMessageBox::Ok);
         return;
     }
-    else if (file.error() != QFile::NoError)
-    {
-        QMessageBox::critical(0, tr("Ошибка"), tr("Не удалось открыть файл"), QMessageBox::Ok);
-        return;
-    }
+    progress->close();
+    delete progress;
+    qDebug() << "Records loaded: " << records.size();
+    pCountRecordsFromTable->setText(QString::number(records.size()));
     QMessageBox::information(0, tr("Сообщение"), tr("Данные успешно загружены из файла"), QMessageBox::Ok);
     return;
 }

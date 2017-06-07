@@ -32,6 +32,8 @@ private:
     QTableView* pRecordsTableView;
     QStandardItemModel* pModel;
 
+    void putStructureToModel(QStandardItemModel&, RecordStructure&, int);
+
 public:
     StrGenerator(QWidget *parent = 0);
     void createForm();

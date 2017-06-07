@@ -8,7 +8,6 @@
 #include <QtXml>
 #include <QFile>
 #include <QFileDialog>
-#include <QDir>
 
 /**
  * @brief Глобальная переменная countRecordsToGenerate предназначена для хранения числа записей при нажатии кнопки генерации
@@ -227,10 +226,11 @@ void StrGenerator::slotGenerateButtonClick()
         records.append(rs);
         //QStandardItem* item =  new QStandardItem(rs.rndStr);
 
-        pModel->setItem(i,0, new QStandardItem(rs.rndStr));
+       /* pModel->setItem(i,0, new QStandardItem(rs.rndStr));
         pModel->setItem(i,1, new QStandardItem(QString::number(rs.rndInt)));
         pModel->setItem(i,2, new QStandardItem(QString::number(rs.rndDouble)));
-        pModel->setItem(i,3, new QStandardItem(QVariant(rs.rndBool).toString()));
+        pModel->setItem(i,3, new QStandardItem(QVariant(rs.rndBool).toString()));*/
+        putStructureToModel(*pModel, rs, i);
     }
     qDebug() << "Generate ended";
     qDebug() << "records.size(): " << records.size();
@@ -262,7 +262,7 @@ void StrGenerator::slotSaveButtonClick()
 
     QString fileName = QFileDialog::getSaveFileName(this, tr("Сохранение"),
                                "./data.xml",
-                                tr("XML documents (*.xml)"));
+                                tr("XML files (*.xml)"));
     QFile file(fileName);
     if (file.open(QIODevice::WriteOnly))
     {
@@ -282,7 +282,6 @@ void StrGenerator::slotSaveButtonClick()
         }
         xmlWriter.writeEndElement();
 
-        //QTextStream(&file) << doc.toString();
         file.close();
         QMessageBox::information(0, tr("Сообщение"), tr("Данные успешно сохранены в файл"), QMessageBox::Ok);
         return;
@@ -292,4 +291,77 @@ void StrGenerator::slotSaveButtonClick()
 void StrGenerator::slotLoadButtonClick()
 {
     qDebug() << "slotLoadButtonClick started";
+    QXmlStreamReader xmlReader;
+
+    QString filename = QFileDialog::getOpenFileName(this,
+                                           tr("Открыть"), "./data",
+                                           tr("Xml files (*.xml)"));
+
+    QFile file(filename);
+    if (!file.open(QFile::ReadOnly | QFile::Text))
+    {
+        QMessageBox::critical(0, tr("Ошибка"), tr("Не удалось открыть файл"), QMessageBox::Ok);
+        return;
+    }
+
+    records.clear();
+    qDebug() << "records.size(): " << records.size();
+    xmlReader.setDevice(&file);
+    xmlReader.readNext();  // Переходит к первому элементу в файле
+
+    while(!xmlReader.atEnd())
+    {
+        if(xmlReader.isStartElement()) //Проверяем, является ли элемент началом тега
+        {
+           if (xmlReader.name() == "item")
+           {
+               //qDebug() << "item";
+               RecordStructure rs;
+               foreach(const QXmlStreamAttribute &attr, xmlReader.attributes())
+               {                  
+                   if (attr.name().toString() == "col1")
+                   {
+                       rs.rndStr = attr.value().toString();
+                   }
+                   if (attr.name().toString() == "col2")
+                   {
+                       rs.rndInt = attr.value().toString().toInt();
+                   }
+                   if (attr.name().toString() == "col3")
+                   {
+                       rs.rndDouble = attr.value().toString().toDouble();
+                   }
+                   if (attr.name().toString() == "col4")
+                   {
+                       rs.rndBool = (QString::compare(attr.value().toString(), "true") == 0) ? true : false;
+                   }
+               }
+               records.append(rs);
+               putStructureToModel(*pModel, rs, records.size()-1);
+           }
+        }
+        xmlReader.readNext();
+    }
+    file.close();
+    qDebug() << "Records loaded: " << records.size();
+    if (xmlReader.hasError())
+    {
+        QMessageBox::critical(0, tr("Ошибка"), tr("Не удалось распарсить содержимое файла"), QMessageBox::Ok);
+        return;
+    }
+    else if (file.error() != QFile::NoError)
+    {
+        QMessageBox::critical(0, tr("Ошибка"), tr("Не удалось открыть файл"), QMessageBox::Ok);
+        return;
+    }
+    QMessageBox::information(0, tr("Сообщение"), tr("Данные успешно загружены из файла"), QMessageBox::Ok);
+    return;
+}
+
+void StrGenerator::putStructureToModel(QStandardItemModel & model, RecordStructure & rs, int row)
+{
+    model.setItem(row,0, new QStandardItem(rs.rndStr));
+    model.setItem(row,1, new QStandardItem(QString::number(rs.rndInt)));
+    model.setItem(row,2, new QStandardItem(QString::number(rs.rndDouble)));
+    model.setItem(row,3, new QStandardItem(QVariant(rs.rndBool).toString()));
 }

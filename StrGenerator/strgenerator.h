@@ -40,7 +40,15 @@ private:
 
 public:
     StrGenerator(QWidget *parent = 0);
+    /**
+     * @brief Функция createForm производит заполнение формы
+     */
     void createForm();
+    /**
+     * @brief Функция setButtonsDisabled устанавливает запрет или разрешение нажатия кнопок
+     * генерации, сохранения и загрузки
+     */
+    void setButtonsDisabled(bool);
     ~StrGenerator();
 
 public slots:

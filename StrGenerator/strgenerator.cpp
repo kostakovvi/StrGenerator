@@ -69,7 +69,7 @@ StrGenerator::StrGenerator(QWidget *parent)
     qDebug() << "StrGenerator constructor started";
     createForm();   
 
-    // Необходимо для корректного срабатывания рандома
+    //Необходимо для корректного срабатывания рандома
     QTime time = QTime::currentTime();
     qsrand((uint)time.msec());
 
@@ -88,7 +88,7 @@ void StrGenerator::createForm()
 
      QPalette Pal(palette());
 
-     // устанавливаем цвет фона
+     //устанавливаем цвет фона
      Pal.setColor(QPalette::Background, Qt::lightGray);
      setAutoFillBackground(true);
      setPalette(Pal);
@@ -108,10 +108,7 @@ void StrGenerator::createForm()
      pModel->setHorizontalHeaderItem(0, new QStandardItem(QString(tr("Колонка1"))));
      pModel->setHorizontalHeaderItem(1, new QStandardItem(QString(tr("Колонка2"))));
      pModel->setHorizontalHeaderItem(2, new QStandardItem(QString(tr("Колонка3"))));
-     pModel->setHorizontalHeaderItem(3, new QStandardItem(QString(tr("Колонка4"))));
-
-     //QStandardItem *firstRow = new QStandardItem(QString("ColumnValue"));
-     //model->setItem(0,0,firstRow);
+     pModel->setHorizontalHeaderItem(3, new QStandardItem(QString(tr("Колонка4"))));    
 
      pRecordsTableView->setModel(pModel);
 
@@ -158,7 +155,7 @@ void StrGenerator::createForm()
      QLabel* col4Lbl = new QLabel(tr("Колонка 4:"));
      col4Lbl->setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
 
-     //Layout Setup
+     //Описание Layout'ов
      QHBoxLayout* hbxLayout = new QHBoxLayout;
      QVBoxLayout* vbxLayout = new QVBoxLayout;
      QGridLayout* gridRecordLayout = new QGridLayout;
@@ -210,47 +207,47 @@ void StrGenerator::slotGenerateButtonClick()
     }
 
     pModel->removeRows(0, records.size());
-    records.clear();    
+    records.clear();
+
+    setButtonsDisabled(true);
 
     QProgressDialog *progress = new QProgressDialog("", tr("Отмена"), 0, countRecordsToGenerate-1);
     progress->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
     progress->setWindowModality(Qt::WindowModal); //не работает так, как ожидалось
     progress->setWindowTitle(tr("Генерация данных"));
     //progress->setMinimumDuration(8000);
-    progress->setMinimumWidth(250);    
-    //progress->setRange(0,countRecordsToGenerate); //0
+    progress->setMinimumWidth(250);
     progress->setValue(0);
     //progress->show();
     for (int i=0; i < countRecordsToGenerate; i++)
-    {
-        //qDebug() << "Generate the structure element " << i+1;
+    {        
         RecordStructure rs;
-        rs.rndStr = randString(2);
-        //qDebug() << rs.rndStr;
-        rs.rndInt = randInt(10,100);
-        //qDebug() << rs.rndInt;
-        rs.rndDouble = randDouble(10.0, 100.0);
-        //qDebug() << rs.rndDouble;
-        rs.rndBool = randBool();
-        //qDebug() << rs.rndBool;
+        rs.rndStr = randString(2);        
+        rs.rndInt = randInt(10,100);        
+        rs.rndDouble = randDouble(10.0, 100.0);        
+        rs.rndBool = randBool();        
         records.append(rs);        
 
         putStructureToModel(*pModel, rs, i);
+        if ( (i+1) % 1000 == 0)
+        {
+            pCountRecordsFromTable->setText(QString::number(records.size()));
+            //Позволяет разблокировать графический интерфейс программы в момент проведения интенсивных операций. Работает медленнее(на несколько порядков).
+            qApp->processEvents();
+        }
 
         progress->setValue(i);
-        //Позволяет разблокировать графический интерфейс программы в момент проведения интенсивных операций. Работает медленнее.
-        qApp->processEvents();
         if(progress->wasCanceled())
         {
-            qDebug() << "Progress cancelled";
+            qDebug() << "Generation Progress cancelled";
             break;
         }
     }
     progress->close();
-    delete progress;
-    qDebug() << "Generate ended";
-    qDebug() << "records.size(): " << records.size();
+    delete progress;    
     pCountRecordsFromTable->setText(QString::number(records.size()));
+    setButtonsDisabled(false);
+    qDebug() << "Generate ended";
 }
 
 void StrGenerator::slotOnTableClick(const QModelIndex &index)
@@ -269,7 +266,7 @@ void StrGenerator::slotOnTableClick(const QModelIndex &index)
 void StrGenerator::slotSaveButtonClick()
 {
     qDebug() << "slotSaveButtonClick started";
-    qDebug() << "Records to save: " << records.size();
+    qDebug() << "Count records to save: " << records.size();
     if (records.size() <=0)
     {
         QMessageBox::information(0, tr("Информация"), tr("Нет записей для сохранения в файл"), QMessageBox::Ok);
@@ -282,6 +279,7 @@ void StrGenerator::slotSaveButtonClick()
     QFile file(fileName);
     if (file.open(QIODevice::WriteOnly))
     {
+        setButtonsDisabled(true);
         QXmlStreamWriter xmlWriter(&file);
         xmlWriter.setAutoFormatting(true);
         xmlWriter.writeStartDocument();
@@ -304,10 +302,12 @@ void StrGenerator::slotSaveButtonClick()
             xmlWriter.writeAttribute("col3", QString::number(rs.rndDouble));
             xmlWriter.writeAttribute("col4", QVariant(rs.rndBool).toString());
             xmlWriter.writeEndElement();
+
+            qApp->processEvents();
             progress->setValue(i);
             if(progress->wasCanceled())
             {
-                qDebug() << "Progress cancelled";
+                qDebug() << "Save progress cancelled";
                 break;
             }
         }
@@ -316,6 +316,7 @@ void StrGenerator::slotSaveButtonClick()
         file.close();
         progress->close();
         delete progress;
+        setButtonsDisabled(false);
         QMessageBox::information(0, tr("Сообщение"), tr("Данные успешно сохранены в файл"), QMessageBox::Ok);
         return;
     }
@@ -338,8 +339,9 @@ void StrGenerator::slotLoadButtonClick()
     }
 
     pModel->removeRows(0, records.size());
-    records.clear();
-    qDebug() << "records.size(): " << records.size();
+    records.clear();   
+
+    setButtonsDisabled(true);
 
     QProgressDialog *progress = new QProgressDialog("", tr("Отмена"), 0, 100);
     progress->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
@@ -347,19 +349,19 @@ void StrGenerator::slotLoadButtonClick()
     progress->setWindowTitle(tr("Загрузка данных из файла"));
     //progress->setMinimumDuration(8000);
     progress->setMinimumWidth(250);
-    progress->setRange(0,0); //0
+    progress->setRange(0,0);
     progress->setValue(0);
     progress->show();
     xmlReader.setDevice(&file);
     xmlReader.readNext();  // Переходит к первому элементу в файле
 
+    int count=0;
     while(!xmlReader.atEnd())
     {
         if(xmlReader.isStartElement()) //Проверяем, является ли элемент началом тега
         {
            if (xmlReader.name() == "item")
-           {
-               //qDebug() << "item";
+           {              
                RecordStructure rs;
                foreach(const QXmlStreamAttribute &attr, xmlReader.attributes())
                {                  
@@ -381,13 +383,19 @@ void StrGenerator::slotLoadButtonClick()
                    }
                }
                records.append(rs);
+               count++;
                putStructureToModel(*pModel, rs, records.size()-1);
-               progress->setValue(records.size()-1);
 
-               qApp->processEvents();
+               if ( count % 1000 == 0)
+               {
+                   pCountRecordsFromTable->setText(QString::number(records.size()));
+                   qApp->processEvents();
+               }
+
+               progress->setValue(records.size()-1);
                if(progress->wasCanceled())
                {
-                   qDebug() << "Progress cancelled";
+                   qDebug() << "Load progress cancelled";
                    break;
                }
            }
@@ -402,8 +410,10 @@ void StrGenerator::slotLoadButtonClick()
     }
     progress->close();
     delete progress;
-    qDebug() << "Records loaded: " << records.size();
+    //qDebug() << "Records loaded: " << records.size();
     pCountRecordsFromTable->setText(QString::number(records.size()));
+
+    setButtonsDisabled(false);
     QMessageBox::information(0, tr("Сообщение"), tr("Данные успешно загружены из файла"), QMessageBox::Ok);
     return;
 }
@@ -414,4 +424,11 @@ void StrGenerator::putStructureToModel(QStandardItemModel & model, RecordStructu
     model.setItem(row,1, new QStandardItem(QString::number(rs.rndInt)));
     model.setItem(row,2, new QStandardItem(QString::number(rs.rndDouble)));
     model.setItem(row,3, new QStandardItem(QVariant(rs.rndBool).toString()));
+}
+
+void StrGenerator::setButtonsDisabled(bool b)
+{
+    pGenerateButton->setDisabled(b);
+    pSaveButton->setDisabled(b);
+    pLoadButton->setDisabled(b);
 }
